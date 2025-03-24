@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-lightText;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-card rounded-xl shadow-lg p-4 hover:shadow-xl transition-shadow;
+  }
+  
+  .stat-card {
+    @apply card flex flex-col gap-2;
+  }
+  
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary hover:bg-primary/80 text-white;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-secondary hover:bg-secondary/80 text-white;
+  }
+  
+  .nav-link {
+    @apply px-3 py-2 rounded-lg text-darkText hover:text-lightText hover:bg-card transition-colors;
+  }
+  
+  .nav-link-active {
+    @apply px-3 py-2 rounded-lg bg-card text-lightText;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+} 

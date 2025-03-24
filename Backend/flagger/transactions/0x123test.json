@@ -1,0 +1,18 @@
+{
+  "tx_id": "0x123test",
+  "sender": "0xabc001...",
+  "recipient": "0xabc991...",
+  "features": {
+    "recipient_contract_type": "contract",
+    "recipient_ens": null,
+    "recipient_cluster_risk": 0.24602179003092728,
+    "wallet_age_days": 343,
+    "recipient_age_days": 240,
+    "value_to_avg_ratio": 2.5,
+    "interaction_frequency": 2,
+    "recipient_token_hygiene": 0.9997354249756177,
+    "contract_code_similarity_score": 0.04405980314919289,
+    "gas_volatility_score": 0.0,
+    "tx_time_deviation": 0
+  }
+}
