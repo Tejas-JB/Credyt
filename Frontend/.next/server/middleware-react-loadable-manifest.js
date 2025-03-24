@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"app/components/Navigation.tsx -> ../components/EmotionDetection/EmotionIndicator\":{\"id\":\"app/components/Navigation.tsx -> ../components/EmotionDetection/EmotionIndicator\",\"files\":[\"static/chunks/_app-pages-browser_app_components_EmotionDetection_EmotionIndicator_tsx.js\"]}}"

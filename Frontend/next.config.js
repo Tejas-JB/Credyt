@@ -2,9 +2,18 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  // Configure image domains if needed
   images: {
     domains: ['images.unsplash.com'],
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      path: false,
+      os: false,
+      encoding: false
+    };
+    return config;
   },
 };
 

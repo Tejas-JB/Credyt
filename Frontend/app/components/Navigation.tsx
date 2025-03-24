@@ -2,6 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
+
+// Use dynamic import with no SSR to prevent hydration mismatch with webcam
+const EmotionIndicator = dynamic(
+  () => import('../components/EmotionDetection/EmotionIndicator'),
+  { ssr: false }
+);
 
 interface NavigationItem {
   name: string;
@@ -44,6 +51,7 @@ export default function Navigation() {
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <EmotionIndicator />
           <button className="btn-primary">Connect Wallet</button>
           <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-white">
             <span>JD</span>

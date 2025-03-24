@@ -10,6 +10,12 @@ import { fetchCryptoPrices } from '../utils/cryptoApi';
 import api from '../utils/api';
 import { TransactionRiskResponse, TransactionIntentResponse } from '../utils/apiClient';
 import { createTransactionWithRisk } from '../utils/transactionUtils';
+import { EmotionMonitor } from '../components/EmotionDetection';
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
+import { Button } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import toast from 'react-hot-toast';
+import { loadFaceDetectionModels } from '../components/EmotionDetection/faceApiUtils';
 
 interface SendMoneyFormData {
   recipientId: string;
@@ -19,7 +25,6 @@ interface SendMoneyFormData {
   amountInUSD: string;
 }
 
-// Mock data for transaction categories
 const categoryStats = [
   { category: 'business' as TransactionCategory, count: 12, percentage: 40, value: '$12,450.75' },
   { category: 'investment' as TransactionCategory, count: 8, percentage: 26.7, value: '$8,322.50' },
@@ -28,7 +33,6 @@ const categoryStats = [
   { category: 'unknown' as TransactionCategory, count: 1, percentage: 3.3, value: '$250.00' },
 ];
 
-// Initialize with default prices that will be updated
 const tokenPrices = {
   'ETH': 2013.75,
   'BTC': 61199.33
@@ -52,13 +56,14 @@ export default function TransactionsPage() {
   const [currentTokenPrices, setCurrentTokenPrices] = useState(tokenPrices);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
   
-  // New state for risk analysis
   const [isAnalyzingRisk, setIsAnalyzingRisk] = useState(false);
   const [riskAnalysis, setRiskAnalysis] = useState<TransactionRiskResponse | null>(null);
   const [intentAnalysis, setIntentAnalysis] = useState<TransactionIntentResponse | null>(null);
   const [showRiskModal, setShowRiskModal] = useState(false);
+  const [isMonitoringActive, setIsMonitoringActive] = useState(true);
+  const [isModelsLoading, setIsModelsLoading] = useState(true);
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null);
 
-  // Static list of client IDs
   const knownClients = [
     { id: 'client_id_001', name: 'John Doe', address: '0x71C...8e3B', creditScore: 750 },
     { id: 'client_id_002', name: 'Jane Smith', address: '0x45A...9f7C', creditScore: 680 },
@@ -70,13 +75,11 @@ export default function TransactionsPage() {
     { id: 'client_id_008', name: 'Frank Lee', address: '0x2E5...7C9', creditScore: 530 },
   ];
 
-  // Fetch real-time cryptocurrency prices
   const updateTokenPrices = async () => {
     setIsLoadingPrices(true);
     try {
       const cryptoData = await fetchCryptoPrices(['bitcoin', 'ethereum']);
       
-      // Update token prices with real-time data
       if (cryptoData.bitcoin && cryptoData.ethereum) {
         const newPrices = {
           'BTC': cryptoData.bitcoin.price,
@@ -85,7 +88,6 @@ export default function TransactionsPage() {
         
         setCurrentTokenPrices(newPrices);
         
-        // Update calculation if form has values
         if (formData.amount) {
           updateConversion(formData.amount, formData.token, inputMode, newPrices);
         }
@@ -97,11 +99,9 @@ export default function TransactionsPage() {
     }
   };
 
-  // Update conversion based on new values
   const updateConversion = (amount: string, token: 'ETH' | 'BTC', mode: 'crypto' | 'usd', prices = currentTokenPrices) => {
     if (amount) {
       if (mode === 'usd') {
-        // Convert from USD to selected token
         const amountInUSD = parseFloat(amount);
         if (!isNaN(amountInUSD)) {
           const amountInCrypto = (amountInUSD / prices[token]).toFixed(8);
@@ -112,7 +112,6 @@ export default function TransactionsPage() {
           }));
         }
       } else {
-        // Convert from token to USD
         const amountInCrypto = parseFloat(amount);
         if (!isNaN(amountInCrypto)) {
           const amountInUSD = (amountInCrypto * prices[token]).toFixed(2);
@@ -129,26 +128,74 @@ export default function TransactionsPage() {
     }
   };
 
-  // Effect to fetch prices when component mounts
   useEffect(() => {
     updateTokenPrices();
     
-    // Set up interval for periodic updates (every 60 seconds)
     const interval = setInterval(updateTokenPrices, 60000);
     
     return () => clearInterval(interval);
   }, []);
 
-  // Effect to update conversion when amount or token changes
   useEffect(() => {
     updateConversion(formData.amount, formData.token, inputMode);
   }, [formData.amount, formData.token, inputMode]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !(window as any).isEmotionallyFitForTransaction) {
+      (window as any).isEmotionallyFitForTransaction = () => true;
+      (window as any).getCurrentEmotionalState = () => ({ emotion: 'unknown', probability: 0, isBlocking: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const timer = setTimeout(() => {
+      loadFaceDetectionModels((stage, progress) => {
+        console.log(`Loading models: ${stage} - ${progress}%`);
+      })
+        .then(() => {
+          if (isMounted) {
+            setIsModelsLoading(false);
+            toast.success('Face detection ready');
+          }
+        })
+        .catch(error => {
+          console.error('Error loading face detection models:', error);
+          if (isMounted) {
+            setModelLoadError(error instanceof Error ? error.message : 'Unknown error');
+            setIsModelsLoading(false);
+            toast.error('Face detection failed to load. Some features may be limited.');
+          }
+        });
+    }, 1000);
+    
+    if (typeof window !== 'undefined') {
+      if (!(window as any).isEmotionallyFitForTransaction) {
+        (window as any).isEmotionallyFitForTransaction = () => true;
+      }
+      
+      if (!(window as any).getCurrentEmotionalState) {
+        (window as any).getCurrentEmotionalState = () => ({
+          emotion: 'unknown', 
+          probability: 0,
+          negative: false,
+          timestamp: Date.now(),
+          faceDetected: false
+        });
+      }
+    }
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
     if (name === 'amount') {
-      // Remove any non-numeric characters except decimal point
       const cleanedValue = value.replace(/[^\d.]/g, '');
       setFormData(prev => ({ ...prev, [name]: cleanedValue }));
     } else {
@@ -160,7 +207,6 @@ export default function TransactionsPage() {
       setSelectedRecipient(recipient ? recipient.name : '');
     }
 
-    // If token changes, recalculate with the current amount
     if (name === 'token') {
       updateConversion(formData.amount, value as 'ETH' | 'BTC', inputMode);
     }
@@ -168,7 +214,6 @@ export default function TransactionsPage() {
 
   const toggleInputMode = () => {
     if (inputMode === 'usd') {
-      // Switching to crypto input
       setInputMode('crypto');
       // Convert current USD amount to crypto
       if (formData.amountInUSD) {
@@ -196,6 +241,22 @@ export default function TransactionsPage() {
 
   // Analyze transaction risk
   const analyzeTransactionRisk = async (): Promise<boolean> => {
+    // Check emotional state first
+    if (typeof window !== 'undefined' && (window as any).isEmotionallyFitForTransaction) {
+      const isEmotionallyFit = (window as any).isEmotionallyFitForTransaction();
+      if (!isEmotionallyFit) {
+        const emotionalState = (window as any).getCurrentEmotionalState?.() || {};
+        
+        // Provide specific message based on whether a face is detected
+        if (emotionalState.faceDetected === false) {
+          alert(`Transaction blocked: No face detected. To ensure security, you must be visible to the camera during transactions.`);
+        } else {
+          alert(`Transaction blocked: Your current emotional state (${emotionalState.emotion}) indicates you may not be in the right mindset for financial decisions. Please try again when you're feeling more positive.`);
+        }
+        return false;
+      }
+    }
+
     // Get the recipient details
     const recipient = knownClients.find(client => client.id === formData.recipientId);
     
@@ -274,11 +335,27 @@ export default function TransactionsPage() {
     }
   };
 
-  // Modified handleSubmit to include risk analysis
+  // Modified handleSubmit to strictly enforce emotional state check
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Analyze risk before proceeding
+    // First, strictly check emotional state before doing anything else
+    if (typeof window !== 'undefined' && (window as any).isEmotionallyFitForTransaction) {
+      const isEmotionallyFit = (window as any).isEmotionallyFitForTransaction();
+      if (!isEmotionallyFit) {
+        const emotionalState = (window as any).getCurrentEmotionalState?.() || {};
+        
+        // Provide specific message based on whether a face is detected
+        if (emotionalState.faceDetected === false) {
+          alert(`Transaction blocked: No face detected. To ensure security, you must be visible to the camera during transactions.`);
+        } else {
+          alert(`Transaction blocked: Your current emotional state (${emotionalState.emotion}) indicates you may not be in the right mindset for financial decisions. Please try again when you're feeling more positive.`);
+        }
+        return; // Exit immediately if emotionally unfit
+      }
+    }
+    
+    // If emotional state is acceptable, then analyze risk
     const isRiskAcceptable = await analyzeTransactionRisk();
     if (!isRiskAcceptable) {
       return;
@@ -357,6 +434,23 @@ export default function TransactionsPage() {
 
   // Function to proceed with risky transaction
   const proceedWithTransaction = async () => {
+    // First, strictly check emotional state before doing anything else
+    if (typeof window !== 'undefined' && (window as any).isEmotionallyFitForTransaction) {
+      const isEmotionallyFit = (window as any).isEmotionallyFitForTransaction();
+      if (!isEmotionallyFit) {
+        const emotionalState = (window as any).getCurrentEmotionalState?.() || {};
+        
+        // Provide specific message based on whether a face is detected
+        if (emotionalState.faceDetected === false) {
+          alert(`Transaction blocked: No face detected. To ensure security, you must be visible to the camera during transactions.`);
+        } else {
+          alert(`Transaction blocked: Your current emotional state (${emotionalState.emotion}) indicates you may not be in the right mindset for financial decisions. Please try again when you're feeling more positive.`);
+        }
+        setShowRiskModal(false); // Close the risk modal
+        return; // Exit immediately if emotionally unfit
+      }
+    }
+
     setShowRiskModal(false);
     
     // Get the recipient details
@@ -757,6 +851,12 @@ export default function TransactionsPage() {
           </button>
         </div>
         
+        {/* Emotion Monitor - now always expanded */}
+        <div className="mb-6 card p-4">
+          <h2 className="text-lg font-semibold mb-4">Security Monitoring</h2>
+          <EmotionMonitor isTransactionFormOpen={showSendForm} />
+        </div>
+        
         {/* Risk Analysis Modal */}
         {showRiskModal && riskAnalysis && (
           <div className="fixed inset-0 flex items-center justify-center z-50">
@@ -970,9 +1070,9 @@ export default function TransactionsPage() {
                 <button 
                   type="submit" 
                   className="btn-primary"
-                  disabled={isAnalyzingRisk}
+                  disabled={isAnalyzingRisk || isModelsLoading}
                 >
-                  {isAnalyzingRisk ? 'Analyzing Risk...' : 'Send Money'}
+                  {isAnalyzingRisk ? 'Analyzing Risk...' : isModelsLoading ? 'Loading Face Detection...' : 'Send Money'}
                 </button>
               </div>
             </form>
